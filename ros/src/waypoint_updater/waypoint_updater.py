@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 
 import rospy
-from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseStamped, TwistStamped
 from styx_msgs.msg import Lane, Waypoint
-
+from scipy import spatial
+import numpy as np
 import math
+from std_msgs.msg import Int32
 
 '''
 This node will publish waypoints from the car's current position to some `x` distance ahead.
@@ -30,6 +32,7 @@ class WaypointUpdater(object):
 
         rospy.Subscriber('/current_pose', PoseStamped, self.pose_cb)
         rospy.Subscriber('/base_waypoints', Lane, self.waypoints_cb)
+        rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
 
@@ -37,16 +40,86 @@ class WaypointUpdater(object):
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
+        self.pose = None
+        self.act_velocity = None
+        self.break_range = []
+        self.no_brake = False
+        
+        self.base_waypoints = None
+        self.next_waypoint = None
+        self.last_stopline_waypoint = -1
+        self.waypoint_velocity = self.kph_to_mps(rospy.get_param('/waypoint_loader/velocity'))
 
-        rospy.spin()
+        self.tree = None
+
+        rate = rospy.Rate(10)
+
+        while not rospy.is_shutdown():
+            self.loop()
+            rate.sleep()
+
+    def kph_to_mps(self, vel):
+        return (vel * 5 / 18)
+
+    def loop(self):
+        if(self.pose is not None) and (self.base_waypoints is not None):
+            self.next_waypoint = self.next_wp_idx()
+            self.publish_waypoints(self.next_waypoint)
+
+    def next_wp_idx(self):
+        car_x = self.pose.position.x
+        car_y = self.pose.position.y
+        car_w = self.pose.orientation.w
+
+        theta = 2 * np.arccos(car_w)
+
+        if theta > np.pi:
+            theta = -(2 * np.pi - theta)
+
+        if self.tree == None:
+            waypoint_list = []
+            for index, waypoint in enumerate(self.base_waypoints):
+                x = waypoint.pose.pose.position.x
+                y = waypoint.pose.pose.position.y
+                waypoint_list.append([x, y])
+            # Loading waypoints to KD Tree for searching
+            self.tree = spatial.KDTree(np.asarray(waypoint_list))
+
+        # TODO_NEHAL - Check for car_x replacement to self.pose.position.x
+        distance, index = self.tree.query([car_x, car_y])
+
+        next_wp_x = self.base_waypoints[index].pose.pose.position.x
+        next_wp_y = self.base_waypoints[index].pose.pose.position.y
+
+        head = np.arctan2((next_wp_y - car_y),(next_wp_x - car_x))
+        angle = abs(car_theta - head)
+
+        if angle > (np.pi / 4):
+            index = (index + 1) % len(self.base_waypoints)
+
+        return index
+
+    def publish_waypoints(self, next_waypoint):
+        lane = Lane()
+        lane.waypoints = []
+        index = next_waypoint
+        for i in range(LOOKAHEAD_WPS):
+            waypoint = Waypoint()
+            waypoint.pose.pose.position.x = self.base_waypoints[index].pose.pose.position.x
+            waypoint.pose.pose.position.y = self.base_waypoints[index].pose.pose.position.y
+            waypoint.twist.twist.linear.x = self.base_waypoints[index].twist.twist.linear.x
+            lane.waypoints.append(waypoint)
+            index = (index + 1) % len(self.base_waypoints)
+
+        self.final_waypoints_pub.publish(lane)
 
     def pose_cb(self, msg):
         # TODO: Implement
-        pass
+        self.pose = msg.pose
 
     def waypoints_cb(self, waypoints):
         # TODO: Implement
-        pass
+        self.base_waypoints = waypoints.waypoints
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
@@ -55,6 +128,9 @@ class WaypointUpdater(object):
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
         pass
+
+    def velocity_cb(self, msg):
+        self.act_velocity = msg.twist.linear.x
 
     def get_waypoint_velocity(self, waypoint):
         return waypoint.twist.twist.linear.x
