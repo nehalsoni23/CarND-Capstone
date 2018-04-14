@@ -53,7 +53,7 @@ class Controller(object):
 
         if ref_lin_vel == 0 and lin_vel < 0.5:
             throttle = 0.0
-            temp_brake_val = (self.car_params.vehicle_mass + self.car_params.fuel_capacity * GAS_DENSITY)) * -1.0 * self.car_params.wheel_radius
+            temp_brake_val = (self.car_params.vehicle_mass + (self.car_params.fuel_capacity * GAS_DENSITY)) * -1.0 * self.car_params.wheel_radius
             brake = max(brake, temp_brake_val)
 
         steer = self.yaw_controller.get_steering(ref_lin_vel, ref_ang_vel, lin_vel)
