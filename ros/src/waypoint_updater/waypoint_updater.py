@@ -92,7 +92,7 @@ class WaypointUpdater(object):
         next_wp_y = self.base_waypoints[index].pose.pose.position.y
 
         head = np.arctan2((next_wp_y - car_y),(next_wp_x - car_x))
-        angle = abs(car_theta - head)
+        angle = abs(theta - head)
 
         if angle > (np.pi / 4):
             index = (index + 1) % len(self.base_waypoints)

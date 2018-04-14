@@ -33,13 +33,13 @@ class Controller(object):
         self.dbw_enabled = dbw_enabled
 
         if not dbw_enabled or self.prev_time is None:
-            self.prev_time = current_time
+            self.prev_time = time
             return 0.0, 0.0, 0.0
 
         delta_time = time - self.prev_time
         self.prev_time = time
 
-        result = self.pid.step(ref_lin_vel - lin_vel, time_diff)
+        result = self.pid.step(ref_lin_vel - lin_vel, delta_time)
 
         if result > 0:
             throttle = result

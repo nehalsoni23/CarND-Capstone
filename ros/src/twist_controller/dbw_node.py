@@ -96,7 +96,7 @@ class DBWNode(object):
                                                                 self.ref_ang_vel, self.lin_vel,
                                                                 self.ang_vel, self.dbw_enabled)
             if self.dbw_enabled:
-                self.publish(throttle, brake, steer)
+                self.publish(throttle, brake, steering)
                 
             rate.sleep()
 
