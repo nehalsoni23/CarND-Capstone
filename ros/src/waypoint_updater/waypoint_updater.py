@@ -35,15 +35,15 @@ class WaypointUpdater(object):
         rospy.Subscriber('/current_velocity', TwistStamped, self.velocity_cb)
 
         # TODO: Add a subscriber for /traffic_waypoint and /obstacle_waypoint below
-
+        rospy.Subscriber('/traffic_waypoint', Int32, self.traffic_cb)
 
         self.final_waypoints_pub = rospy.Publisher('final_waypoints', Lane, queue_size=1)
 
         # TODO: Add other member variables you need below
         self.pose = None
         self.act_velocity = None
-        self.break_range = []
-        self.no_brake = False
+        self.brake_range = []
+        self.on_brake = False
         
         self.base_waypoints = None
         self.next_waypoint = None
@@ -123,32 +123,28 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
-        rospy.loginfo("Traffic_cb called")
         if (self.base_waypoints is not None and self.act_velocity != None):
             wp_idx = msg.data
-            rospy.loginfo("wp_idx set")
+            
             # Check for RED light
             # if there is RED light, apply brake if needed
             if(wp_idx != -1 and self.on_brake == False):
-                rospy.loginfo("red light detected at "+ wp_idx)
+                
                 dist = self.distance(self.base_waypoints, self.next_waypoint, wp_idx)
                 idx_dist = wp_idx - self.next_waypoint
                 s_per_idx = dist/idx_dist if idx_dist else 0.9
                 
-                ref_accel = (self.act_velocity**2)(2*(dist-4))
+                ref_accel = (self.act_velocity**2)/(2*(dist-4))
 
                 if(ref_accel >= 2 and ref_accel < 10):
 
                     for i in range(self.next_waypoint, wp_idx +1):
                         updated_velocity = self.act_velocity**2 - 2*ref_accel*s_per_idx*(i-self.next_waypoint+1)
                         updated_velocity = np.sqrt(updated_velocity) if (updated_velocity >= 0.0) else 0
-                        self.set_waypoint_velocity(self.base_waypoints, i, update_velocity)
+                        self.set_waypoint_velocity(self.base_waypoints, i, updated_velocity)
 
                     self.brake_range.append((self.next_waypoint, wp_idx))
                     self.on_brake = True
-                # TODO_NEHAL
-                # elif (ref_accel < 2):
-                #    pass
                 else:
                     pass
             if(wp_idx == -1 and self.last_stopline_waypoint != -1):
