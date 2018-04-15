@@ -166,17 +166,16 @@ class TLDetector(object):
 
         """
         # List of positions that correspond to the line to stop in front of traffic light for a given intersection
-        if(self.pose and self.light_wp_list):
+        if(self.pose != None and self.light_wp_list != None):
             closest_wp = self.get_closest_waypoint(self.pose.pose)
             light_wp = self.light_wp_list[self.light]["waypoint"]
 
             # TODO find the closest visible traffic light (if one exists)
             if (closest_wp > light_wp):
-                # TODO_NEHAL
-                # max_light_wp = self.light_wp_list[-1]["waypoint"]
-                # if(self.light != 0 or closest_wp < max_light_wp):
-                self.light = (self.light + 1) % len(self.light_wp_list)
-                light_wp = self.light_wp_list[self.light]["waypoint"]
+                max_light_wp = self.light_wp_list[-1]["waypoint"]
+                if(self.light != 0 or closest_wp < max_light_wp):
+                    self.light = (self.light + 1) % len(self.light_wp_list)
+                    light_wp = self.light_wp_list[self.light]["waypoint"]
 
             state = self.get_light_state(self.light)
             return light_wp, state

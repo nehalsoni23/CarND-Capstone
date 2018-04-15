@@ -123,12 +123,14 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
+        rospy.loginfo("Traffic_cb called")
         if (self.base_waypoints is not None and self.act_velocity != None):
             wp_idx = msg.data
-
+            rospy.loginfo("wp_idx set")
             # Check for RED light
             # if there is RED light, apply brake if needed
             if(wp_idx != -1 and self.on_brake == False):
+                rospy.loginfo("red light detected at "+ wp_idx)
                 dist = self.distance(self.base_waypoints, self.next_waypoint, wp_idx)
                 idx_dist = wp_idx - self.next_waypoint
                 s_per_idx = dist/idx_dist if idx_dist else 0.9
