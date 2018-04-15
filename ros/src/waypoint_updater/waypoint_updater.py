@@ -123,7 +123,40 @@ class WaypointUpdater(object):
 
     def traffic_cb(self, msg):
         # TODO: Callback for /traffic_waypoint message. Implement
-        pass
+        if (self.base_waypoints is not None and self.act_velocity != None):
+            wp_idx = msg.data
+
+            # Check for RED light
+            # if there is RED light, apply brake if needed
+            if(wp_idx != -1 and self.on_brake == False):
+                dist = self.distance(self.base_waypoints, self.next_waypoint, wp_idx)
+                idx_dist = wp_idx - self.next_waypoint
+                s_per_idx = dist/idx_dist if idx_dist else 0.9
+                
+                ref_accel = (self.act_velocity**2)(2*(dist-4))
+
+                if(ref_accel >= 2 and ref_accel < 10):
+
+                    for i in range(self.next_waypoint, wp_idx +1):
+                        updated_velocity = self.act_velocity**2 - 2*ref_accel*s_per_idx*(i-self.next_waypoint+1)
+                        updated_velocity = np.sqrt(updated_velocity) if (updated_velocity >= 0.0) else 0
+                        self.set_waypoint_velocity(self.next_waypoint, wp_idx)
+
+                    self.brake_range.append((self.next_waypoint, wp_idx))
+                    self.on_brake = True
+                # TODO_NEHAL
+                # elif (ref_accel < 2):
+                #    pass
+                else:
+                    pass
+            if(wp_idx == -1 and self.last_stopline_waypoint != -1):
+                for i in self.brake_range:
+                    for j in range(i[0], i[1]+1):
+                        self.set_waypoint_velocity(self.base_waypoints, j, self.waypoint_velocity)
+                    self.brake_range.remove(i)
+                    self.on_brake = False
+                    
+            self.last_stopline_waypoint = wp_idx
 
     def obstacle_cb(self, msg):
         # TODO: Callback for /obstacle_waypoint message. We will implement it later
