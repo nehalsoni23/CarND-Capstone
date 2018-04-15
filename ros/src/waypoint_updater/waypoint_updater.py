@@ -140,7 +140,7 @@ class WaypointUpdater(object):
                     for i in range(self.next_waypoint, wp_idx +1):
                         updated_velocity = self.act_velocity**2 - 2*ref_accel*s_per_idx*(i-self.next_waypoint+1)
                         updated_velocity = np.sqrt(updated_velocity) if (updated_velocity >= 0.0) else 0
-                        self.set_waypoint_velocity(self.next_waypoint, wp_idx)
+                        self.set_waypoint_velocity(self.base_waypoints, i, update_velocity)
 
                     self.brake_range.append((self.next_waypoint, wp_idx))
                     self.on_brake = True
